@@ -2,3 +2,4 @@ dist
 .metadata
 .project
 .pydevproject
+*.pyc
