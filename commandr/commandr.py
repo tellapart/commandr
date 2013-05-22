@@ -1,75 +1,90 @@
-"""Tool for providing a simple and uniform command line interface to a set of
-functions. Decorated functions get registered as commands, whose signature is
-automatically converted to an OptionParser object, and run against the command
-line options. To use this tool, import the module, decorate functions that are
-to be exposed as commands, and call Run().
-
-Arguments are automatically converted to a type based on any default values in
-the function signature. All function arguments without a default value will be
-considered strings.
-
-If a default value is None, the None will be passed through as the default
-(i.e. when no value is specified), but will be considered a string when
-specified.
-
-If an argument can be of mixed types, the default should be a string and the
-value should be cast by the function.
-
-Booleans are treated specially. If the default value of an argument is False,
-the command line parameter is a simple switch. If the default value of the
-argument is True, the command line parameter a flag with "no_" in front of it.
-
-If there are extra command line arguments not specified as switches, those
-values will be applied to each function argument in order, skipping any
-function arguments with boolean defaults. To keep the interface cleaner, it's
-recommended to place boolean arguments at the end so that skipping is less
-likely to occur.
-
-Usage help is automatically generated based on the signature, and is augmented
-with the contents of the function's docstring.
-
-e.g., in demo.py:
-
-  from commandr import command, Run
-
-  @command('greet')
-  def Hi(name, title='Mr.', comma=False, capslock=False):
-    '''Greet someone.
-    Arguments:
-      name - Name to greet.
-      title - Title of the person to greet.
-      comma - Whether to add a comma after the greeting.
-      capslock - Whether to output in ALL CAPS.
-    '''
-    hello = 'Hi%s %s %s!' % ("," if comma else "", title, name)
-    if capslock:
-      return hello.upper()
-    else:
-      return hello
-  if __name__ == '__main__':
-    Run()
-
-The command can them be invoked on the command line with:
-  $ python demo.py greet --name=John
-  Hi Mr. John!
-
-  # Invoke with short parameter names
-  $ python demo.py greet -n=Nick -t=Dr. -c
-  Hi, Dr. Nick!
-
-  # Invoke with posoitional arguments
-  $ python demo.py greet Smith Ms.
-  Hi Ms. Smith!
-
-  # Combined explicit and positional arguments. In this case, 'Julie' will
-  # match the first unspecified argument 'name'
-  # 'capslock' doesn't have a short name because 'comma' came first.
-  # Equal signs are also optional.
-  $ python demo.py greet --title Engineer -c --capslock Julie
-  HI, ENGINEER JULIE!
-"""
-
-__copyright__ = 'Copyright (C) 2013 TellApart, Inc. All Rights Reserved.'
+# Copyright 2013 TellApart, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# =============================================================================
+#
+# Tool for providing a simple and uniform command line interface to a set of
+# functions. Decorated functions get registered as commands, whose signature is
+# automatically converted to an OptionParser object, and run against the
+# command line options. To use this tool, import the module, decorate functions
+# that are to be exposed as commands, and call Run().
+#
+# Arguments are automatically converted to a type based on any default values
+# in the function signature. All function arguments without a default value
+# will be considered strings.
+#
+# If a default value is None, the None will be passed through as the default
+# (i.e. when no value is specified), but will be considered a string when
+# specified.
+#
+# If an argument can be of mixed types, the default should be a string and the
+# value should be cast by the function.
+#
+# Booleans are treated specially. If the default value of an argument is
+# False, the command line parameter is a simple switch. If the default value
+# of the argument is True, the command line parameter a flag with "no_" in
+# front of it.
+#
+# If there are extra command line arguments not specified as switches, those
+# values will be applied to each function argument in order, skipping any
+# function arguments with boolean defaults. To keep the interface cleaner,
+# it's recommended to place boolean arguments at the end so that skipping is
+# less likely to occur.
+#
+# Usage help is automatically generated based on the signature, and is
+# augmented with the contents of the function's docstring.
+#
+# e.g., in demo.py:
+#
+#   from commandr import command, Run
+#
+#   @command('greet')
+#   def Hi(name, title='Mr.', comma=False, capslock=False):
+#     '''Greet someone.
+#     Arguments:
+#       name - Name to greet.
+#       title - Title of the person to greet.
+#       comma - Whether to add a comma after the greeting.
+#       capslock - Whether to output in ALL CAPS.
+#     '''
+#     hello = 'Hi%s %s %s!' % ("," if comma else "", title, name)
+#     if capslock:
+#       return hello.upper()
+#     else:
+#       return hello
+#   if __name__ == '__main__':
+#     Run()
+#
+# The command can them be invoked on the command line with:
+#   $ python demo.py greet --name=John
+#   Hi Mr. John!
+#
+#   # Invoke with short parameter names
+#   $ python demo.py greet -n=Nick -t=Dr. -c
+#   Hi, Dr. Nick!
+#
+#   # Invoke with posoitional arguments
+#   $ python demo.py greet Smith Ms.
+#   Hi Ms. Smith!
+#
+#   # Combined explicit and positional arguments. In this case, 'Julie' will
+#   # match the first unspecified argument 'name'
+#   # 'capslock' doesn't have a short name because 'comma' came first.
+#   # Equal signs are also optional.
+#   $ python demo.py greet --title Engineer -c --capslock Julie
+#   HI, ENGINEER JULIE!
+#
 
 from collections import namedtuple
 import inspect

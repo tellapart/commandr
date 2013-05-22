@@ -30,3 +30,8 @@ In demo.py:
 The command can them be invoked on the command line with:
   $ python demo.py greet --name=John -c
   Hi, Mr. John!
+
+
+Authors
+=======
+commandr was developed at TellApart by Kevin Ballard and Chris Huegle.
