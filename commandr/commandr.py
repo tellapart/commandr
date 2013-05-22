@@ -110,6 +110,9 @@ def command(command_name, category=None):
   Can be invoked from the command line with:
 
     python something.py greet --name=Nick --title=Dr.
+
+  If 'category' is specified, commands with the same category are grouped
+  together when listing all available commands.
   """
   def command_decorator(cmd_fn):
     _ALL_COMMANDS[command_name] = cmd_fn
@@ -125,11 +128,11 @@ def Run():
 
   # Pull the command name from the first command line argument.
   if len(sys.argv) < 2:
-    _HelpExit_NoCommand("Command must be specified")
+    _HelpExitNoCommand("Command must be specified")
 
   cmd_name = sys.argv[1]
   if cmd_name not in _ALL_COMMANDS:
-    _HelpExit_NoCommand("Unknown command '%s'" % cmd_name)
+    _HelpExitNoCommand("Unknown command '%s'" % cmd_name)
 
   # Get the command function from the registry.
   cmd_fn = _ALL_COMMANDS[cmd_name]
@@ -151,7 +154,7 @@ def Run():
   # If help, print our message, else remove it so it doesn't confuse the
   # execution
   if options_dict['help']:
-    _HelpExit_Command(None, cmd_name, cmd_fn, parser)
+    _HelpExitCommand(None, cmd_name, cmd_fn, parser)
   elif 'help' in options_dict:
     del options_dict['help']
 
@@ -160,7 +163,7 @@ def Run():
     skipped = 0
     for i, value in enumerate(args[1:]):
       if i + skipped >= len(argspec.args):
-        _HelpExit_Command(
+        _HelpExitCommand(
             "Too many arguments",
             cmd_name, cmd_fn, parser, options_dict, argspec.args)
 
@@ -170,7 +173,7 @@ def Run():
       while key in defaults_dict and defaults_dict[key] in [True, False]:
         skipped += 1
         if i + skipped >= len(argspec.args):
-          _HelpExit_Command(
+          _HelpExitCommand(
               "Too many arguments: True/False must be specified via switches",
               cmd_name, cmd_fn, parser, options_dict, argspec.args)
 
@@ -180,7 +183,7 @@ def Run():
       if (((key in defaults_dict and defaults_dict[key] != options_dict[key])
               or (key not in defaults_dict and options_dict[key] != None))
           and value != options_dict[key]):
-        _HelpExit_Command(
+        _HelpExitCommand(
             "Repeated option: %s\nOption: %s\nArgument: %s" % (
                 key, options_dict[key], value),
             cmd_name, cmd_fn, parser, options_dict, argspec.args)
@@ -197,7 +200,7 @@ def Run():
 
   for key, value in options_dict.iteritems():
     if value == None and key not in defaults_dict:
-      _HelpExit_Command(
+      _HelpExitCommand(
           "All options without default values must be specified",
           cmd_name, cmd_fn, parser, options_dict, argspec.args)
 
@@ -269,7 +272,7 @@ def _BuildOptParse(argspec, defaults_dict):
       parser.add_option(*args, dest=arg)
   return parser
 
-def _HelpExit_NoCommand(message):
+def _HelpExitNoCommand(message):
   """Exit with a help message that is not specific to any command.
 
   Args:
@@ -298,7 +301,7 @@ def _HelpExit_NoCommand(message):
 
   sys.exit(1)
 
-def _HelpExit_Command(
+def _HelpExitCommand(
     message, cmd_name, cmd_fn, parser, options_dict=None, arglist=None):
   """Exit with a help message for a specific command.
 
