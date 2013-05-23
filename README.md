@@ -5,9 +5,8 @@ commandr is a simple tool for making Python functions accessible from the
 command line.
 
 Example
-=======
-e.g., in example.py:
-
+-------
+In example.py:
 ```python
   @command('greet')
   def SayGreeting(name, title='Mr.', times=1, comma=False, capslock=False):
@@ -28,8 +27,10 @@ e.g., in example.py:
 
   if __name__ == '__main__':
     Run()
+````
 
 The command can them be invoked on the command line with:
+```bash
   $ python example.py greet --name=John
   Hi Mr. John!
 
@@ -50,7 +51,7 @@ The command can them be invoked on the command line with:
 ```
 
 Features
-========
+--------
 
 commandr creates command-line interfaces to Python functions through a decorator
 that uses reflection to automatically convert a function's signature into a
@@ -108,45 +109,40 @@ Arguments can be bound on the command line explicitly by name, by the first
 letter in the argument's name (limited to the first unique instance of that
 letter), or positionally. For example, the following are valid ways to invoke
 the 'put' command:
-
 ```bash
 $ python features.py put --key=somekey --value somevalue
 $ python features.py put -k somekey -v somevalue
 $ python features.py put somekey somevalue -t 5
 ```
-
 Note that the '=' signs are optional.
 
 Defaults and Types
 ------------------
-
 Keyword argument defaults are respected, and are used to infer types for those
 parameters. For non-keyword arguments and keyword arguments where the default
 is None, the default type if str. The generated parser automatically casts
 and checks types. For example, the following will not validate, and will print
 usage help:
-
 ```bash
 $ python features.py get somekey --timeout=blah
 ```
-
 In the body of DoGet e.g., the 'timeout' parameter will always be an int.
 
 Boolean Parameters
 ------------------
-
 Boolean parameters are treated specially. The generated parser converts boolean
 keyword parameters into single flags which, when specified on the command-line,
 sets the argument to the opposite of the default.
 
 For example, the 'dev' argument of the 'version' command can be set to True by:
-
+```bash
 $ python features.py version --dev
-
+```
 When a boolean parameter default is True, the generated switch is the parameter
 name with "no_" prefixed. For example, to set 'cache' to False for 'get':
-
+```bash
 $ python features.py get somekey --no_cache
+```
 
 Documentation Generation
 ------------------------
@@ -156,8 +152,7 @@ decorated functions.
 
 Running a commandr script directly gives a list of available commands, grouped
 by the category specified in each decorator.
-
-```
+```bash
 $ python features.py
 > Command must be specified
 >
@@ -167,11 +162,12 @@ $ python features.py
 > Database Commands:
 >   get
 >   put
+```
 
 Documentation for any command can be accessed by running the script with that
 command and the -h or --help argument. This includes the function's docstring
 (if any), argument names, and default values.
-
+```bash
 $ python features.py get -h
 > Documentation for command 'get':
 > ----------------------------------------
@@ -197,7 +193,7 @@ $ python features.py get -h
 If a command is invoked with incomplete arguments, or invalid values, the error
 is printed, along with the usage documentation.
 
-```
+```bash
 $ python features.py put somekey1 --transaction
 > All options without default values must be specified
 >
@@ -231,5 +227,5 @@ $ python features.py put somekey1 --transaction
 ```
 
 Authors
-=======
-commandr was developed at TellApart by Kevin Ballard and Chris Huegle.
+-------
+commandr was developed at TellApart by [Kevin Ballard](https://github.com/kevinballard) and [Chris Huegle](https://github.com/chuegle).
