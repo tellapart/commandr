@@ -21,7 +21,7 @@ from distutils.core import setup
 
 setup(
     name='commandr',
-    version='1.0dev',
+    version='1.0',
     packages=['commandr'],
     author='Kevin Ballard',
     author_email='kevin@tellapart.com',
