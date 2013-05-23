@@ -50,6 +50,18 @@ The command can them be invoked on the command line with:
   HI, ENGINEER JULIE!
 ```
 
+Installation
+------------
+
+To install commandr, simply:
+```bash
+$ pip install requests
+```
+or
+```bash
+$ easy_install requests
+```
+
 Features
 --------
 
@@ -100,8 +112,7 @@ The following script will be used to show examples of the features:
     Run()
 ```
 
-Parser Generation
------------------
+### Parser Generation
 
 The command-line interface to a function is generated based on the arguments in
 the function's signature. Both regular and keyword arguments are supported.
@@ -116,8 +127,8 @@ $ python features.py put somekey somevalue -t 5
 ```
 Note that the '=' signs are optional.
 
-Defaults and Types
-------------------
+### Defaults and Types
+
 Keyword argument defaults are respected, and are used to infer types for those
 parameters. For non-keyword arguments and keyword arguments where the default
 is None, the default type if str. The generated parser automatically casts
@@ -128,8 +139,8 @@ $ python features.py get somekey --timeout=blah
 ```
 In the body of DoGet e.g., the 'timeout' parameter will always be an int.
 
-Boolean Parameters
-------------------
+### Boolean Parameters
+
 Boolean parameters are treated specially. The generated parser converts boolean
 keyword parameters into single flags which, when specified on the command-line,
 sets the argument to the opposite of the default.
@@ -144,8 +155,7 @@ name with "no_" prefixed. For example, to set 'cache' to False for 'get':
 $ python features.py get somekey --no_cache
 ```
 
-Documentation Generation
-------------------------
+### Documentation Generation
 
 Command help is automatically generated, using the signature and docstring of
 decorated functions.
