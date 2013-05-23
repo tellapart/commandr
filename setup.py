@@ -21,9 +21,10 @@ from distutils.core import setup
 
 setup(
     name='commandr',
-    version='1.0',
+    version='1.0.1',
     packages=['commandr'],
     author='Kevin Ballard',
     author_email='kevin@tellapart.com',
     url='http://pypi.python.org/pypi/commandr/',
-    license='')
+    license='LICENSE',
+    description='Tool to automatically build command line interfaces to functions')
