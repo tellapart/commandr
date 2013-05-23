@@ -55,11 +55,11 @@ Installation
 
 To install commandr, simply:
 ```bash
-$ pip install requests
+$ pip install commandr
 ```
 or
 ```bash
-$ easy_install requests
+$ easy_install commandr
 ```
 
 Features
