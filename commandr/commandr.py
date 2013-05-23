@@ -45,44 +45,46 @@
 # Usage help is automatically generated based on the signature, and is
 # augmented with the contents of the function's docstring.
 #
-# e.g., in demo.py:
-#
-#   from commandr import command, Run
+# e.g., in example.py:
 #
 #   @command('greet')
-#   def Hi(name, title='Mr.', comma=False, capslock=False):
-#     '''Greet someone.
+#   def SayGreeting(name, title='Mr.', times=1, comma=False, capslock=False):
+#     """Greet someone.
+#
 #     Arguments:
 #       name - Name to greet.
 #       title - Title of the person to greet.
+#       times - Number of time to say the greeting.
 #       comma - Whether to add a comma after the greeting.
 #       capslock - Whether to output in ALL CAPS.
-#     '''
-#     hello = 'Hi%s %s %s!' % ("," if comma else "", title, name)
+#     """
+#     message = 'Hi%s %s %s!' % (',' if comma else '', title, name)
 #     if capslock:
-#       return hello.upper()
-#     else:
-#       return hello
+#       message = message.upper()
+#
+#     for _ in xrange(times):
+#       print message
+#
 #   if __name__ == '__main__':
 #     Run()
 #
 # The command can them be invoked on the command line with:
-#   $ python demo.py greet --name=John
+#   $ python example.py greet --name=John
 #   Hi Mr. John!
 #
 #   # Invoke with short parameter names
-#   $ python demo.py greet -n=Nick -t=Dr. -c
+#   $ python example.py greet -n=Nick -t=Dr. -c
 #   Hi, Dr. Nick!
 #
-#   # Invoke with posoitional arguments
-#   $ python demo.py greet Smith Ms.
+#   # Invoke with positional arguments
+#   $ python example.py greet Smith Ms.
 #   Hi Ms. Smith!
 #
 #   # Combined explicit and positional arguments. In this case, 'Julie' will
 #   # match the first unspecified argument 'name'
 #   # 'capslock' doesn't have a short name because 'comma' came first.
 #   # Equal signs are also optional.
-#   $ python demo.py greet --title Engineer -c --capslock Julie
+#   $ python example.py greet --title Engineer -c --capslock Julie
 #   HI, ENGINEER JULIE!
 #
 
