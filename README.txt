@@ -50,6 +50,7 @@ The command can them be invoked on the command line with:
 
 Features
 ========
+
 commandr creates command-line interfaces to Python functions through a decorator
 that uses reflection to automatically convert a function's signature into a
 command line parser.
@@ -109,32 +110,34 @@ $ python features.py put --key=somekey --value somevalue
 $ python features.py put -k somekey -v somevalue
 $ python features.py put somekey somevalue -t 5
 
+Note that the '=' signs are optional.
+
 Defaults and Types
 ------------------
 
 Keyword argument defaults are respected, and are used to infer types for those
-parameters. For non-keyword arguments, and keyword arguments where the default
-is None, the default type if str). The generated parser automatically casts
+parameters. For non-keyword arguments and keyword arguments where the default
+is None, the default type if str. The generated parser automatically casts
 and checks types. For example, the following will not validate, and will print
 usage help:
 
 $ python features.py get somekey --timeout=blah
 
-In the body of DoGet e.g., the timeout parameter will always be set to an int.
+In the body of DoGet e.g., the 'timeout' parameter will always be an int.
 
 Boolean Parameters
 ------------------
 
 Boolean parameters are treated specially. The generated parser converts boolean
-keyword parameters into single flags that, when specified on the command-line,
-switch the argument to the opposite of the default.
+keyword parameters into single flags which, when specified on the command-line,
+sets the argument to the opposite of the default.
 
 For example, the 'dev' argument of the 'version' command can be set to True by:
 
 $ python features.py version --dev
 
-When a boolean parameter default is True, the generated swotch is the parameter
-naame with "no_" prefixed. For example, to set 'cache' to False for 'get':
+When a boolean parameter default is True, the generated switch is the parameter
+name with "no_" prefixed. For example, to set 'cache' to False for 'get':
 
 $ python features.py get somekey --no_cache
 
@@ -145,7 +148,7 @@ Command help is automatically generated, using the signature and docstring of
 decorated functions.
 
 Running a commandr script directly gives a list of available commands, grouped
-by the category specified in the decorator.
+by the category specified in each decorator.
 
 $ python features.py
 > Command must be specified
@@ -183,7 +186,7 @@ $ python features.py get -h
 >   -n, --no_cache
 
 If a command is invoked with incomplete arguments, or invalid values, the error
-is printed, along with the usege documentation.
+is printed, along with the usage documentation.
 
 $ python features.py put somekey1 --transaction
 > All options without default values must be specified
