@@ -2,7 +2,8 @@ commandr
 ========
 
 commandr is a simple tool for making Python functions accessible from the
-command line.
+command line. Essentially you add a command decorator and you are off to 
+the races.
 
 Example
 -------
