@@ -192,9 +192,9 @@ def Run():
 
       # cast specific types
       if key in defaults_dict:
-        if isinstance(defaults_dict, int):
+        if isinstance(defaults_dict[key], int):
           value = int(value)
-        elif isinstance(defaults_dict, float):
+        elif isinstance(defaults_dict[key], float):
           value = float(value)
 
       # Update arg
