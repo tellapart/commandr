@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['command', 'Run']
+__all__ = ['command', 'Run', 'SetOptionModes',
+           'UNDERSCORE_MODE', 'DASH_MODE', 'DELETE_MODE']
 
-from commandr import Run, command
-
+from commandr import Run, command, SetOptionModes
+from commandr import UNDERSCORE_MODE, DASH_MODE, DELETE_MODE
