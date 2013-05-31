@@ -38,4 +38,4 @@ def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
     print message
 
 if __name__ == '__main__':
-  Run()
+  Run(hyphenate=True)

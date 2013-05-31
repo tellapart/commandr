@@ -2,7 +2,7 @@ commandr
 ========
 
 commandr is a simple tool for making Python functions accessible from the
-command line. Essentially you add a command decorator and you are off to 
+command line. Essentially you add a command decorator and you are off to
 the races.
 
 Example
@@ -10,17 +10,17 @@ Example
 In example.py:
 ```python
   @command('greet')
-  def SayGreeting(name, title='Mr.', times=1, comma=False, capslock=False):
+  def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
     """Greet someone.
     Arguments:
       name - Name to greet.
       title - Title of the person to greet.
       times - Number of time to say the greeting.
       comma - Whether to add a comma after the greeting.
-      capslock - Whether to output in ALL CAPS.
+      caps_lock - Whether to output in ALL CAPS.
     """
     message = 'Hi%s %s %s!' % (',' if comma else '', title, name)
-    if capslock:
+    if caps_lock:
       message = message.upper()
 
     for _ in xrange(times):
@@ -45,9 +45,9 @@ The command can them be invoked on the command line with:
 
   # Combined explicit and positional arguments. In this case, 'Julie' will
   # match the first unspecified argument 'name'
-  # 'capslock' doesn't have a short name because 'comma' came first.
+  # 'caps-lock' doesn't have a short name because 'comma' came first.
   # Equal signs are also optional.
-  $ python example.py greet --title Engineer -c --capslock Julie
+  $ python example.py greet --title Engineer -c --caps-lock Julie
   HI, ENGINEER JULIE!
 ```
 
@@ -106,7 +106,7 @@ The following script will be used to show examples of the features:
     ...
 
   @command('version')
-  def GetVersion(host, dev=False):
+  def GetVersion(host_name, dev=False):
     ...
 
   if __name__ == '__main__':
@@ -127,6 +127,19 @@ $ python features.py put -k somekey -v somevalue
 $ python features.py put somekey somevalue -t 5
 ```
 Note that the '=' signs are optional.
+
+### Underscores
+
+Underscores ('_') in parameter names can be automatically converted to dashes
+('-'). When enabled, both form of the argument are allowed. For example, both
+of the following are correct:
+```bash
+$ python features.py version --host-name localhost
+$ python features.py version --host_name localhost
+```
+
+This feature is enabled by default. See the Options section below for details
+on how to adjust this behavior.
 
 ### Defaults and Types
 
@@ -153,7 +166,7 @@ $ python features.py version --dev
 When a boolean parameter default is True, the generated switch is the parameter
 name with "no_" prefixed. For example, to set 'cache' to False for 'get':
 ```bash
-$ python features.py get somekey --no_cache
+$ python features.py get somekey --no-cache
 ```
 
 ### Documentation Generation
@@ -198,7 +211,7 @@ $ python features.py get -h
 >   -k KEY, --key=KEY
 >   -t TIMEOUT, --timeout=TIMEOUT
 >                         [default: 10]
->   -n, --no_cache
+>   -n, --no-cache
 ```
 
 If a command is invoked with incomplete arguments, or invalid values, the error
@@ -235,6 +248,42 @@ $ python features.py put somekey1 --transaction
 >   -t TIMEOUT, --timeout=TIMEOUT
 >                         [default: 10]
 >   --transaction
+```
+
+### Options
+
+There are several options that can be set to modify the behavior of the parser
+generation. These options can be set by calling the SeeOption() function, or
+as parameters to the Run() function. Values set by Run() take precedence.
+
+The available parameters are:
+
+##### hyphenate:
+If True (default), then any argument containing an underscore ('_') will be
+parsable with dashes ('-') in their place (both variants will be allowed).
+If False, then only the original argument name will be accepted.
+
+Note that if hyphenate is enabled, partial arguments will result in a
+conflict error. For example, if --caps is supplied for --caps-lock and
+--caps_lock, a conflict error will occur.
+
+#####show_all_help_variants:
+If False (default), then only one argument name variant will be displayed
+in the help text (all forms will remain accepted as arguments).
+Specifically, when hyphenate is True, only the hyphenated variant will be
+displayed in the help text.
+
+* * *
+
+For example, disabling hyphenation:
+```python
+from commandr import command, Run, SetOptions
+
+...
+
+if __name__ == '__main__':
+  SetOptions(hyphenate=False)
+  Run()
 ```
 
 Authors

@@ -12,8 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = ['command', 'Run', 'SetOptionModes',
-           'UNDERSCORE_MODE', 'DASH_MODE', 'DELETE_MODE']
+__all__ = [
+    'command',
+    'Run',
+    'SetOptions',]
 
-from commandr import Run, command, SetOptionModes
-from commandr import UNDERSCORE_MODE, DASH_MODE, DELETE_MODE
+from commandr import Commandr
+
+_COMMANDR = Commandr()
+
+# Export the global Commandr object methods.
+command = _COMMANDR.command
+Run = _COMMANDR.Run
+SetOptions = _COMMANDR.SetOptions

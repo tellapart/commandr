@@ -87,98 +87,51 @@
 #   $ python example.py greet --title Engineer -c --caps-lock Julie
 #   HI, ENGINEER JULIE!
 #
-# There are several modes to handle arguments with underscores in the variable
-# name.
-# The mode can be set by calling:
-#   SetOptionMode([<mode>, <mode>], hidden=False)
+# There are several options that affect the form of the generated parser. The
+# options can be set by calling:
+#   SetOption(hyphenate=<bool>, show_all_help_variants=<bool>)
 #
-# The modes are:
-# UNDERSCORE_MODE
-# Options are accepted with underscores.
+# All options can also be set as arguments to Run(). Values set in that way
+# will take precedence.
 #
-# DASH_MODE
-# Options are accepted with dashes replacing underscores.
+# hyphenate:
+#   If True (default), then any argument containing an underscore ('_') will be
+#   parsable with dashes ('-') in their place (both variants will be allowed).
+#   If False, then only the original argument name will be accepted.
 #
-# DELETE_MODE
-# Options are accepted with underscores deleted.
+#   Note that if hyphenate is enabled, partial arguments will result in a
+#   conflict error. For example, if --caps is supplied for --caps-lock and
+#   --caps_lock, a conflict error will occur.
 #
-# If the hidden is True, only the first mode in the list set will displayed in
-# the help text, while all forms will be accepted as arguments.
+# show_all_help_variants:
+#   If False (default), then only one argument name variant will be displayed
+#   in the help text (all forms will remain accepted as arguments).
+#   Specifically, when hyphenate is True, only the hyphenated variant will be
+#   displayed in the help text.
 #
-# If more than one mode is set, then partial arguments will result in a conflict
-# error.  For example, if --caps is supplied for --caps-lock and --caps_lock, a
-# conflict error will occur.
 
 from collections import namedtuple
 import inspect
 from optparse import OptionParser, SUPPRESS_HELP
 import sys
 
-# Arguments with underscores get converted to dashes.
-DASH_MODE = 'dash'
-# Arguments with underscores stay underscores.
-UNDERSCORE_MODE = 'underscore'
-# Arguments with underscores will have the underscore deleted.
-DELETE_MODE = 'delete'
-
-COMMANDR = None
-
-def GetCommandr():
-  """Returns the global commandr object."""
-  global COMMANDR
-  if not COMMANDR:
-    COMMANDR = Commandr()
-  return COMMANDR
-
-def command(*args, **kwargs):
-  """Alias for commandr.command."""
-  return GetCommandr().command(*args, **kwargs)
-
-def Run(*args, **kwargs):
-  """Alias for commandr.Run."""
-  return GetCommandr().Run(*args, **kwargs)
-
-def SetOptionModes(*args, **kwargs):
-  """Alias for commandr.SetOptionModes."""
-  return GetCommandr().SetOptionModes(*args, **kwargs)
-
 class Commandr(object):
-  """Class for managing commandr execution."""
-  def __init__(self, modes=None, hidden=None):
-    """Initializes a Commandr object.
+  """Class for managing commandr context."""
 
-    Args:
-      modes - A list of modes to be set.
-      hidden - If True, only the first mode will be displayed in help messages.
-               If False, all modes will be displayed in the help messages in the
-               order added.
-    """
-    self.modes = modes or [DASH_MODE, UNDERSCORE_MODE]
-    self.hidden = hidden if hidden != None else True
-    self.parser = None
+  def __init__(self):
+    """"""
+    self.hyphenate = True
+    self.hidden = True
+
     # Mapping of all command names to the respective command function.
+    self.parser = None
     self._all_commands = {}
+
     # List of commands in the order they appeared, of the format:
     #   [(name, callable, category)]
     self._command_list = []
     self._command_info = namedtuple(
       '_COMMAND_INFO', ['name', 'callable', 'category'])
-
-  def SetOptionModes(self, modes, hidden=None):
-    """Sets which option styles are accepted.
-
-    When an option has underscores, the underscores can be left alone, deleted or
-    converted into dashes.
-
-    Args:
-      modes - A list of modes to be set.
-      hidden - If True, only the first mode will be displayed in help messages.
-               If False, all modes will be displayed in the help messages in the
-               order added.
-    """
-    if hidden != None:
-      self.hidden = hidden
-    self.modes = modes
 
   def command(self, command_name, category=None):
     """Decorator that marks a function as a 'command' which can be invoked with
@@ -203,10 +156,38 @@ class Commandr(object):
 
     return command_decorator
 
-  def Run(self):
+  def SetOptions(self,
+      hyphenate=None,
+      show_all_help_variants=None):
+    """Set commandr options. Any argument not set to None will be applied
+    (otherwise it will retain its current value).
+
+    Args:
+      hyphenate - If True, underscores in argument names will be converted to
+          hyphens (both variants will be acceptable inputs).
+      show_all_help_variants - If hyphenate is True and show_all_help_variants
+          is False, then only the hyphenated version of applicable arguments
+          will be shown in the help text (although both variants will be
+          acceptable inputs).
+    """
+    if hyphenate is not None:
+      self.hyphenate = bool(hyphenate)
+    if show_all_help_variants is not None:
+      self.hidden = not bool(show_all_help_variants)
+
+  def Run(self,
+      hyphenate=None,
+      show_all_help_variants=None):
     """Main function to take command line arguments, and parse them into a
     command to run, and the arguments to that command, and execute the command.
+
+    Args:
+      hyphenate - If not None, set the hyphenate option to this value (see
+          SetOptions for details)
+      show_all_help_variants - If not None, set the show_all_help_variants
+          option to this value (see SetOptions for details)
     """
+    self.SetOptions(hyphenate, show_all_help_variants)
 
     # Pull the command name from the first command line argument.
     if len(sys.argv) < 2:
@@ -363,32 +344,33 @@ class Commandr(object):
              argument.
       kwargs - Remaining arguments to be passed to parser.add_option.
     """
-    if '_' in args[-1] and self.modes != [UNDERSCORE_MODE]:
-      arg = args[-1]
-      extras = args[:-1]
-      alt_args = []
-      args = []
-      options = {DASH_MODE:arg.replace('_', '-'),
-                 UNDERSCORE_MODE:arg,
-                 DELETE_MODE:arg.replace('_', '')}
-      for mode in self.modes:
-        if mode not in options:
-          raise ValueError('InvalidOptionMode', mode)
+    arg_orig_label = args[-1]
+    arg_orig_alternates = args[:-1]
 
-        if not args:
-          args = extras + [options[mode]]
-        elif not self.hidden:
-          args.append(options[mode])
-        else:
-          alt_args.append(options[mode])
+    args_final = arg_orig_alternates[:]
+    args_hidden = []
 
-      if alt_args:
-        alt_kwargs = kwargs.copy()
-        alt_kwargs['help'] = SUPPRESS_HELP
-        if 'default' in alt_kwargs:
-          del alt_kwargs['default']
-        self.parser.add_option(*alt_args, **alt_kwargs)
-    self.parser.add_option(*args, **kwargs)
+    # Build the final arguments list based on the options.
+    if '_' in arg_orig_label and self.hyphenate:
+      args_final.append(arg_orig_label.replace('_', '-'))
+
+      if self.hidden:
+        args_hidden.append(arg_orig_label)
+      else:
+        args_final.append(arg_orig_label)
+
+    else:
+      args_final.append(arg_orig_label)
+
+    # Add the final option to the parser (and possibly a hidden one as well).
+    self.parser.add_option(*args_final, **kwargs)
+
+    if args_hidden:
+      kwargs_hidden = kwargs.copy()
+      kwargs_hidden['help'] = SUPPRESS_HELP
+      if 'default' in kwargs_hidden:
+        del kwargs_hidden['default']
+      self.parser.add_option(*args_hidden, **kwargs_hidden)
 
   def _HelpExitNoCommand(self, message):
     """Exit with a help message that is not specific to any command.
