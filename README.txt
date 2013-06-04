@@ -117,7 +117,7 @@ Defaults and Types
 
 Keyword argument defaults are respected, and are used to infer types for those
 parameters. For non-keyword arguments and keyword arguments where the default
-is None, the default type if str. The generated parser automatically casts
+is None, the default type is str. The generated parser automatically casts
 and checks types. For example, the following will not validate, and will print
 usage help:
 
