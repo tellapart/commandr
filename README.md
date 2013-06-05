@@ -286,6 +286,61 @@ if __name__ == '__main__':
   Run()
 ```
 
+Multiple Decorators
+-------------------
+
+It is possible to use 'stacked' decorators with commandr, with a few caveats.
+First, the @command decorator only sees, and therefore can only execute, the
+function as passed to it. This usually means that the @command decorator should
+be at the top of the stack. Second, any decorator below @command in the stack
+which wraps the original function (i.e. returns a function other than the
+original being decorated) must attach special meta-data to the wrapper. This
+can be accomplished using commandr.wraps, which has the same semantics as
+functools.wraps. (There is also commandr.update_wrapper which has the same
+semantics as functools.update_wrapper). e.g.:
+
+```python
+from commandr import command, Run, wraps
+
+def some_decorator(fn):
+  @wraps(fn)
+  def _wrapper(*args, **kwargs):
+    print 'Wrapper Here!'
+    return fn(*args, **kwargs)
+  return _wrapper
+
+@command('test_decorated')
+@some_decorator
+def DecoratedFunction(arg1, arg2=1):
+    """An example usage of stacked decorators."""
+    print arg1, arg2
+
+Run()
+```
+
+Without this additional meta-data, commandr will inspect the wrapper's signature
+to built the parser, which is probably not the intended effect.
+
+If working with decorators that use functools.wraps, commandr provides a
+mechanism to monkey-patch functools. Calling commandr.MonkeyPatchFunctools()
+updates functools.wraps and functools.update_wrapper so that they also attach
+the meta-data commandr needs. e.g.:
+
+```python
+from commandr import command, Run, MonkeyPatchFunctools
+MonkeyPatchFunctools()
+
+@command('test_decorated')
+@some_legacy_wrapping_decorator
+def DecoratedFunction(arg1, arg2=1):
+  print arg1, arg2
+
+Run()
+```
+
+Note that @command itself is not a wrapping decorator -- the original function
+is left intact.
+
 Authors
 -------
 commandr was developed at TellApart by [Kevin Ballard](https://github.com/kevinballard) and [Chris Huegle](https://github.com/chuegle).
