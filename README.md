@@ -312,8 +312,8 @@ def some_decorator(fn):
 @command('test_decorated')
 @some_decorator
 def DecoratedFunction(arg1, arg2=1):
-    """An example usage of stacked decorators."""
-    print arg1, arg2
+  """An example usage of stacked decorators."""
+  print arg1, arg2
 
 Run()
 ```

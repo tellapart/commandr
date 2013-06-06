@@ -36,7 +36,7 @@ def MonkeyPatchFunctools():
   updates functools.update_wrapper and functools.wraps to support commandr
   stacked decorators.
 
-  NOTE: This must be called _BEFORE_ and declarations using functools.wraps
+  NOTE: This must be called _BEFORE_ any declarations using functools.wraps
       or functools.update_wrapper.
   """
-  functools.update_wrapper = update_wrapper_plus
+  functools.update_wrapper = update_wrapper
