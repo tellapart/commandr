@@ -319,7 +319,7 @@ Run()
 ```
 
 Without this additional meta-data, commandr will inspect the wrapper's signature
-to built the parser, which is probably not the intended effect.
+to build the parser, which is probably not the intended effect.
 
 If working with decorators that use functools.wraps, commandr provides a
 mechanism to monkey-patch functools. Calling commandr.MonkeyPatchFunctools()
