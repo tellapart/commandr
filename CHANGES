@@ -1,0 +1,8 @@
+
+1.1.0
+========
+- issue#5: fix type casting for positional arguments
+- issue#4: Add support for converting underscores to hyphens in parameter
+  names. Enabled by default.
+- Add support for decorator 'stacks'
+
