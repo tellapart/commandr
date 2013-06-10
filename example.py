@@ -17,7 +17,7 @@
 # Example usage of commandr.
 #
 
-from commandr import command, Run
+from commandr import command, Run, wraps
 
 @command('greet')
 def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
@@ -36,6 +36,19 @@ def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
 
   for _ in xrange(times):
     print message
+
+def some_decorator(fn):
+  @wraps(fn)
+  def _wrapper(*args, **kwargs):
+    print 'Wrapper Here!'
+    return fn(*args, **kwargs)
+  return _wrapper
+
+@command('test_decorated')
+@some_decorator
+def DecoratedFunction(arg1, arg2=1):
+    """An example usage of stacked decorators."""
+    print arg1, arg2
 
 if __name__ == '__main__':
   Run(hyphenate=True)
