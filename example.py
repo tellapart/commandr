@@ -37,6 +37,24 @@ def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
   for _ in xrange(times):
     print message
 
+@command
+def simple_greet(name):
+  """An example of @command without arguments.
+
+  Arguments:
+    name - Name to greet.
+  """
+  print 'Hi %s!' % name
+
+@command()
+def another_simple_greet(name):
+  """An example of @command() without arguments.
+
+  Arguments:
+    name - Name to greet.
+  """
+  print 'Aloha %s!' % name
+
 def some_decorator(fn):
   @wraps(fn)
   def _wrapper(*args, **kwargs):

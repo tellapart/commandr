@@ -3,3 +3,4 @@ dist
 .project
 .pydevproject
 *.pyc
+*.swp

@@ -133,7 +133,7 @@ class Commandr(object):
     self._command_info = namedtuple(
       '_COMMAND_INFO', ['name', 'callable', 'category'])
 
-  def command(self, command_name, category=None):
+  def command(self, command_name=None, category=None):
     """Decorator that marks a function as a 'command' which can be invoked with
     arguments from the command line. e.g.:
 
@@ -145,14 +145,22 @@ class Commandr(object):
 
       python something.py greet --name=Nick --title=Dr.
 
+    If 'command_name' is not specified, defaults to function name.
+
     If 'category' is specified, commands with the same category are grouped
     together when listing all available commands.
     """
-    def command_decorator(cmd_fn):
-      self._all_commands[command_name] = cmd_fn
+    def command_decorator(cmd_fn, cmd_fn_name=None):
+      final_name = cmd_fn_name or command_name or cmd_fn.func_name
+      self._all_commands[final_name] = cmd_fn
       self._command_list.append(
-        self._command_info(command_name, cmd_fn, category))
+        self._command_info(final_name, cmd_fn, category))
       return cmd_fn
+
+    # Handle no command_name case.
+    if callable(command_name):
+      cmd_func = command_name
+      return command_decorator(cmd_func, cmd_func.func_name)
 
     return command_decorator
 
