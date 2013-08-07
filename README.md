@@ -45,9 +45,10 @@ The command can them be invoked on the command line with:
 
   # Combined explicit and positional arguments. In this case, 'Julie' will
   # match the first unspecified argument 'name'
-  # 'caps-lock' doesn't have a short name because 'comma' came first.
+  # 'caps_lock' is capital 'C' because 'comma' came first.  If a third argument
+  # started with 'c', it would have no short option.
   # Equal signs are also optional.
-  $ python example.py greet --title Engineer -c --caps-lock Julie
+  $ python example.py greet --title Engineer -c -C Julie
   HI, ENGINEER JULIE!
 ```
 
@@ -119,8 +120,9 @@ The command-line interface to a function is generated based on the arguments in
 the function's signature. Both regular and keyword arguments are supported.
 Arguments can be bound on the command line explicitly by name, by the first
 letter in the argument's name (limited to the first unique instance of that
-letter), or positionally. For example, the following are valid ways to invoke
-the 'put' command:
+letter), the capitalized letter of the first letter in the argument's name
+(limited to the second unique instance of that letter) or positionally. For
+example, the following are valid ways to invoke the 'put' command:
 ```bash
 $ python features.py put --key=somekey --value somevalue
 $ python features.py put -k somekey -v somevalue

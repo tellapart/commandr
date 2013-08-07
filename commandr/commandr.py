@@ -82,9 +82,10 @@
 #
 #   # Combined explicit and positional arguments. In this case, 'Julie' will
 #   # match the first unspecified argument 'name'
-#   # 'caps_lock' doesn't have a short name because 'comma' came first.
+#   # 'caps_lock' is capital 'C' because 'comma' came first.  If a third argument
+#   # started with 'c', it would have no short option.
 #   # Equal signs are also optional.
-#   $ python example.py greet --title Engineer -c --caps-lock Julie
+#   $ python example.py greet --title Engineer -c -C Julie
 #   HI, ENGINEER JULIE!
 #
 # There are several options that affect the form of the generated parser. The
@@ -119,7 +120,7 @@ class Commandr(object):
   """Class for managing commandr context."""
 
   def __init__(self):
-    """"""
+    """Initializes a Commmandr Object """
     self.hyphenate = True
     self.hidden = True
 
@@ -318,9 +319,13 @@ class Commandr(object):
       if arg in defaults_dict and repr(defaults_dict[arg]) == 'True':
         argname = 'no_%s' % argname
       args = ['--%s' % argname]
-      if argname[0] not in letters and argname[0] not in argspec.args:
-        args.insert(0, '-%s' % argname[0])
-        letters.add(argname[0])
+
+      switch_options = (argname[0], argname[0].upper())
+      for switch in switch_options:
+        if switch not in letters and switch not in argspec.args:
+          args.insert(0, '-%s' % switch)
+          letters.add(switch)
+          break
 
       if arg in defaults_dict:
         if repr(defaults_dict[arg]) == 'False':
