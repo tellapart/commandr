@@ -113,6 +113,7 @@
 
 from collections import namedtuple
 import inspect
+import itertools
 from optparse import OptionParser, SUPPRESS_HELP
 import sys
 
@@ -416,7 +417,14 @@ class Commandr(object):
       if command.category != last_category:
         print "%s Commands:" % (command.category or "General")
         last_category = command.category
-      print "  %s" % command.name
+
+      if hasattr(command.callable, '__doc__') and command.callable.__doc__: 
+        docs = itertools.takewhile(
+          bool, [l.strip() for l in command.callable.__doc__.split('\n')])
+      else:
+        docs = []
+      doc = " - %s" % " ".join(docs) if docs else ""
+      print "  %s%s" % (command.name, doc)
 
     sys.exit(1)
 
