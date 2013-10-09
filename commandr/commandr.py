@@ -110,6 +110,11 @@
 #   Specifically, when hyphenate is True, only the hyphenated variant will be
 #   displayed in the help text.
 #
+# ignore_self:
+#   If True, arguments named "self" will be ignored when building the parser
+#   for functions. This is useful when using member functions as commands.
+#   Default is False.
+#
 
 from collections import namedtuple
 import inspect
@@ -124,6 +129,11 @@ class Commandr(object):
     """Initializes a Commmandr Object """
     self.hyphenate = True
     self.hidden = True
+    self.ignore_self = False
+
+    # Internal flag indicating whether to expect the command name as the first
+    # command line argument.
+    self.no_command_arg = True
 
     # Mapping of all command names to the respective command function.
     self.parser = None
@@ -168,7 +178,8 @@ class Commandr(object):
 
   def SetOptions(self,
       hyphenate=None,
-      show_all_help_variants=None):
+      show_all_help_variants=None,
+      ignore_self=None):
     """Set commandr options. Any argument not set to None will be applied
     (otherwise it will retain its current value).
 
@@ -179,15 +190,21 @@ class Commandr(object):
           is False, then only the hyphenated version of applicable arguments
           will be shown in the help text (although both variants will be
           acceptable inputs).
+      ignore_self - If True, arguments named "self" will be ignored when
+          building the parser for functions. This is useful when using member
+          functions as commands. Default is False.
     """
     if hyphenate is not None:
       self.hyphenate = bool(hyphenate)
     if show_all_help_variants is not None:
       self.hidden = not bool(show_all_help_variants)
+    if ignore_self is not None:
+      self.ignore_self = ignore_self
 
   def Run(self,
       hyphenate=None,
-      show_all_help_variants=None):
+      show_all_help_variants=None,
+      ignore_self=None):
     """Main function to take command line arguments, and parse them into a
     command to run, and the arguments to that command, and execute the command.
 
@@ -195,9 +212,11 @@ class Commandr(object):
       hyphenate - If not None, set the hyphenate option to this value (see
           SetOptions for details)
       show_all_help_variants - If not None, set the show_all_help_variants
-          option to this value (see SetOptions for details)
+          option to this value (see SetOptions for details).
+      ignore_self - If not None, set the ignore_self option to this value (see
+          SetOptions for details).
     """
-    self.SetOptions(hyphenate, show_all_help_variants)
+    self.SetOptions(hyphenate, show_all_help_variants, ignore_self)
 
     # Pull the command name from the first command line argument.
     if len(sys.argv) < 2:
@@ -209,6 +228,33 @@ class Commandr(object):
 
     # Get the command function from the registry.
     cmd_fn = self._all_commands[cmd_name]
+
+    self.no_command_arg = False
+    return self.RunFunction(cmd_fn, cmd_name)
+
+  def RunFunction(self,
+      cmd_fn,
+      cmd_name=None,
+      hyphenate=None,
+      show_all_help_variants=None,
+      ignore_self=None):
+    """Method to explicitly execute a given function against the command line
+    arguments. If this method is called directly, the command name will not be
+    expected in the arguments.
+
+    Args:
+      cmd_fn - Callable to inspect, apply command line arguments, and execute.
+      cmd_name - String name of the command.
+      hyphenate - If not None, set the hyphenate option to this value (see
+          SetOptions for details)
+      show_all_help_variants - If not None, set the show_all_help_variants
+          option to this value (see SetOptions for details).
+      ignore_self - If not None, set the ignore_self option to this value (see
+          SetOptions for details).
+    """
+    self.SetOptions(hyphenate, show_all_help_variants, ignore_self)
+
+    cmd_name = cmd_name or ''
 
     # Check if the command function is wrapped with other decorators, and if so,
     # find the original function signature.
@@ -238,9 +284,12 @@ class Commandr(object):
       del options_dict['help']
 
     # If desired, add args into the options_dict
-    if len(args) > 1:
+    args_to_parse = args[1:] if not self.no_command_arg else args
+
+    if len(args_to_parse) > 0:
       skipped = 0
-      for i, value in enumerate(args[1:]):
+
+      for i, value in enumerate(args_to_parse):
         if i + skipped >= len(argspec.args):
           self._HelpExitCommand("Too many arguments",
                                 cmd_name, cmd_fn, options_dict, argspec.args)
@@ -316,9 +365,14 @@ class Commandr(object):
 
     for arg in argspec.args:
       argname = arg
+
+      if self.ignore_self and argname == 'self':
+        continue
+
       # If the default is True, make the argument a negative
       if arg in defaults_dict and repr(defaults_dict[arg]) == 'True':
         argname = 'no_%s' % argname
+
       args = ['--%s' % argname]
 
       switch_options = (argname[0], argname[0].upper())
@@ -418,7 +472,7 @@ class Commandr(object):
         print "%s Commands:" % (command.category or "General")
         last_category = command.category
 
-      if hasattr(command.callable, '__doc__') and command.callable.__doc__: 
+      if hasattr(command.callable, '__doc__') and command.callable.__doc__:
         docs = itertools.takewhile(
           bool, [l.strip() for l in command.callable.__doc__.split('\n')])
       else:
