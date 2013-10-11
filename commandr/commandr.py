@@ -145,6 +145,10 @@ class Commandr(object):
     self._command_info = namedtuple(
       '_COMMAND_INFO', ['name', 'callable', 'category'])
 
+    # Place-holders for the selected command function / name.
+    self.cmd_fn = None
+    self.cmd_name = None
+
   def command(self, command_name=None, category=None):
     """Decorator that marks a function as a 'command' which can be invoked with
     arguments from the command line. e.g.:
@@ -254,16 +258,49 @@ class Commandr(object):
     """
     self.SetOptions(hyphenate, show_all_help_variants, ignore_self)
 
-    cmd_name = cmd_name or ''
-
     # Check if the command function is wrapped with other decorators, and if so,
     # find the original function signature.
     cmd_fn_root = cmd_fn
     while hasattr(cmd_fn_root, '__wrapped__'):
       cmd_fn_root = getattr(cmd_fn_root, '__wrapped__')
 
+    self.cmd_fn = cmd_fn_root
+    self.cmd_name = cmd_name or ''
+
+    # Extract the arguments and defaults from the command function's signature.
+    cmd_args, defaults_dict = self._GetArgInfo(cmd_fn_root)
+
+    # Convert the arguments and defaults into an OptionParser object, and apply
+    # it to the command-lint arguments.
+    self._BuildOptParse(cmd_args, defaults_dict)
+
+    (options, args) = self.parser.parse_args()
+    options_dict = vars(options)
+
+    # Validate and convert the arguments / options from the OptionParser output
+    # into the final dict of arguments to pass the command function.
+    cmd_args_dict = self._PostProcessOptions(
+        cmd_args, defaults_dict, args, options_dict)
+
+    # Execute the actual command function.
+    result = cmd_fn(**cmd_args_dict)
+
+    if result:
+      print result
+
+  def _GetArgInfo(self, cmd_fn):
+    """Given a function, calculate its list of arguments, and a dict of default
+    values.
+
+    Args:
+      cmd_fn - Callable to retrieve argument information from.
+
+    Returns:
+      ([Argument Names], {Argument Name: Default Value})
+    """
+
     # Reflect the command function's arguments.
-    argspec = inspect.getargspec(cmd_fn_root)
+    argspec = inspect.getargspec(cmd_fn)
 
     # Populates defaults iff there is a default
     defaults_dict = {}
@@ -271,83 +308,18 @@ class Commandr(object):
       for i in xrange(1, len(argspec.defaults) + 1):
         defaults_dict[argspec.args[-i]] = argspec.defaults[-i]
 
-    self._BuildOptParse(argspec, defaults_dict)
+    return argspec.args, defaults_dict
 
-    (options, args) = self.parser.parse_args()
-    options_dict = vars(options)
-
-    # If help, print our message, else remove it so it doesn't confuse the
-    # execution
-    if options_dict['help']:
-      self._HelpExitCommand(None, cmd_name, cmd_fn)
-    elif 'help' in options_dict:
-      del options_dict['help']
-
-    # If desired, add args into the options_dict
-    args_to_parse = args[1:] if not self.no_command_arg else args
-
-    if len(args_to_parse) > 0:
-      skipped = 0
-
-      for i, value in enumerate(args_to_parse):
-        if i + skipped >= len(argspec.args):
-          self._HelpExitCommand("Too many arguments",
-                                cmd_name, cmd_fn, options_dict, argspec.args)
-
-        key = argspec.args[i + skipped]
-
-        # If it's a boolean, skip assigning an arg to it.
-        while key in defaults_dict and defaults_dict[key] in [True, False]:
-          skipped += 1
-          if i + skipped >= len(argspec.args):
-            self._HelpExitCommand(
-                "Too many arguments: True/False must be specified via switches",
-                cmd_name, cmd_fn, options_dict, argspec.args)
-
-          key = argspec.args[i + skipped]
-
-        # Make sure the arg isn't already changed from the default.
-        if (((key in defaults_dict and defaults_dict[key] != options_dict[key])
-                or (key not in defaults_dict and options_dict[key] != None))
-            and value != options_dict[key]):
-          self._HelpExitCommand(
-              "Repeated option: %s\nOption: %s\nArgument: %s" % (
-                  key, options_dict[key], value),
-              cmd_name, cmd_fn, options_dict, argspec.args)
-
-        # cast specific types
-        if key in defaults_dict:
-          if isinstance(defaults_dict[key], int):
-            value = int(value)
-          elif isinstance(defaults_dict[key], float):
-            value = float(value)
-
-        # Update arg
-        options_dict[key] = value
-
-    for key, value in options_dict.iteritems():
-      if value == None and key not in defaults_dict:
-        self._HelpExitCommand(
-            "All options without default values must be specified",
-            cmd_name, cmd_fn, options_dict, argspec.args)
-
-    result = cmd_fn(**options_dict)
-
-    if result:
-      print result
-
-  def _BuildOptParse(self, argspec, defaults_dict):
-    """Convert an ArgSpec object returned from inspect.getargsprc() into an
+  def _BuildOptParse(self, args, defaults_dict):
+    """Convert a functions argument names and default values into an
     OptionsParser object that can be used to convert and validate command line
     arguments to invoke the original function. Default values are pulled from
     the function definition if present in defaults_dict. All non-defaulted
     arguments must be specific on the command line.
 
     Args:
-      argspec - ArgSpec object returned from inspect.getargspec() on the chosen
-          command function.
-      default_dict - If provided, defaults will be pulled from the dict instead
-          of the argspec.
+      args - List of argument names.
+      default_dict - Map of argument name to default values.
 
     Returns:
       A populated OptionParser object.
@@ -363,7 +335,7 @@ class Commandr(object):
     # Parse the command function's arguments into the OptionsParser.
     letters = set(['h']) # -h is for help
 
-    for arg in argspec.args:
+    for arg in args:
       argname = arg
 
       if self.ignore_self and argname == 'self':
@@ -377,7 +349,7 @@ class Commandr(object):
 
       switch_options = (argname[0], argname[0].upper())
       for switch in switch_options:
-        if switch not in letters and switch not in argspec.args:
+        if switch not in letters and switch not in args:
           args.insert(0, '-%s' % switch)
           letters.add(switch)
           break
@@ -445,6 +417,75 @@ class Commandr(object):
       if 'default' in kwargs_hidden:
         del kwargs_hidden['default']
       self.parser.add_option(*args_hidden, **kwargs_hidden)
+
+  def _PostProcessOptions(self, cmd_args, defaults_dict, args, options_dict):
+    """Given the output from the OptionParser, validate all the given arguments
+    and convert them into the final keyword args to pass the command function.
+    If any invalid or missing arguments are detected, this will exit with a
+    help message.
+
+    Args:
+      cmd_args - List of argument names of the command function.
+      defaults_dict - Dict of argument names to default values.
+      args - Arguments output of the OptionParser.
+      options_dict - Options output of the OptionParser.
+    """
+    # If help, print the message; otherwise remove it so it doesn't confuse the
+    # execution.
+    if options_dict['help']:
+      self._HelpExitCommand(None, self.cmd_name, self.cmd_fn)
+    elif 'help' in options_dict:
+      del options_dict['help']
+
+    cmd_args_dict = dict(options_dict)
+
+    skipped = 0
+    args_to_parse = args[1:] if not self.no_command_arg else args
+    for i, value in enumerate(args_to_parse):
+      if i + skipped >= len(cmd_args):
+        self._HelpExitCommand(
+            "Too many arguments",
+            self.cmd_name, self.cmd_fn, options_dict, cmd_args)
+
+      key = cmd_args[i + skipped]
+
+      # If it's a boolean, skip assigning an arg to it, since that's handled
+      # directly by the OptionParser.
+      while key in defaults_dict and defaults_dict[key] in [True, False]:
+        skipped += 1
+        if i + skipped >= len(cmd_args):
+          self._HelpExitCommand(
+              "Too many arguments: True/False must be specified via switches",
+              self.cmd_name, self.cmd_fn, options_dict, cmd_args)
+
+        key = cmd_args[i + skipped]
+
+      # Make sure the arg isn't already changed from the default.
+      if (((key in defaults_dict and defaults_dict[key] != options_dict[key])
+              or (key not in defaults_dict and options_dict[key] != None))
+          and value != options_dict[key]):
+        self._HelpExitCommand(
+            "Repeated option: %s\nOption: %s\nArgument: %s" % (
+                key, options_dict[key], value),
+            self.cmd_name, self.cmd_fn, options_dict, cmd_args)
+
+      # Cast specific types.
+      if key in defaults_dict:
+        if isinstance(defaults_dict[key], int):
+          value = int(value)
+        elif isinstance(defaults_dict[key], float):
+          value = float(value)
+
+      # Update the arg in the command function dict.
+      cmd_args_dict[key] = value
+
+    for key, value in cmd_args_dict.iteritems():
+      if value == None and key not in defaults_dict:
+        self._HelpExitCommand(
+            "All options without default values must be specified",
+            self.cmd_name, self.cmd_fn, cmd_args_dict, cmd_args)
+
+    return cmd_args_dict
 
   def _HelpExitNoCommand(self, message):
     """Exit with a help message that is not specific to any command.
