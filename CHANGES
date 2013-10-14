@@ -1,3 +1,14 @@
+1.2.1
+=======
+- The 'help' command has been added to give either the global help or help on
+  a specific command (help [command]).
+- The option 'help_docs' was added to print __main__.__doc__ on help messages.
+  It defaults to True.
+- The option main has been added to SetOptions and command() to set a command
+  to get run when no command is supplied. Default is help.
+- The option 'ignore_self' can now be passed in command() to override the global
+  value on a per function basis.
+
 1.2.0
 ========
 - Support @command() decorator with no name argument, which will fall back to 

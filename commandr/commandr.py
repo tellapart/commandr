@@ -115,6 +115,13 @@
 #   for functions. This is useful when using member functions as commands.
 #   Default is False.
 #
+# main_docs:
+#   If True, __main__.__doc__ and __main__.__copyright__ will be printed if
+#   the command is run with no command or help. Default is True.
+#
+# main:
+#   If set, Commandr will use the supplied value as the command name to run
+#   if no command name is supplied.  It will override any previous values.
 
 from collections import namedtuple
 import inspect
@@ -130,6 +137,7 @@ class Commandr(object):
     self.hyphenate = True
     self.hidden = True
     self.ignore_self = False
+    self.main_docs = True
 
     # Internal flag indicating whether to expect the command name as the first
     # command line argument.
@@ -138,14 +146,18 @@ class Commandr(object):
     # Mapping of all command names to the respective command function.
     self.parser = None
     self._all_commands = {}
+    self.main = None
 
     # List of commands in the order they appeared, of the format:
     #   [(name, callable, category)]
     self._command_list = []
     self._command_info = namedtuple(
-      '_COMMAND_INFO', ['name', 'callable', 'category'])
+      '_COMMAND_INFO', ['name', 'callable', 'category', 'ignore_self'])
 
-  def command(self, command_name=None, category=None):
+    self.command('help', ignore_self=True)(self._HelpExitNoCommand)
+
+  def command(self, command_name=None, category=None, main=False,
+              ignore_self=None):
     """Decorator that marks a function as a 'command' which can be invoked with
     arguments from the command line. e.g.:
 
@@ -157,16 +169,31 @@ class Commandr(object):
 
       python something.py greet --name=Nick --title=Dr.
 
-    If 'command_name' is not specified, defaults to function name.
-
-    If 'category' is specified, commands with the same category are grouped
-    together when listing all available commands.
+    Args:
+      command_name - Name the command is called on the command line. Default is
+        the name of the function.
+      category - Group to list the command under on help.  Default is General.
+      main - If True, this command will be set to run if no commands are
+        specified.  An Exception will be thrown if two commands are set to be
+        main.
+      ignore_self - If True or False, it will apply the ignore_self option for
+        this command, while others use the global default.
+    Returns:
+      decorator/function to register the command.
     """
     def command_decorator(cmd_fn, cmd_fn_name=None):
-      final_name = cmd_fn_name or command_name or cmd_fn.func_name
-      self._all_commands[final_name] = cmd_fn
-      self._command_list.append(
-        self._command_info(final_name, cmd_fn, category))
+      final_name = (cmd_fn_name if cmd_fn_name is not None
+                    else command_name if command_name is not None
+                    else cmd_fn.func_name)
+      info = self._command_info(final_name, cmd_fn, category, ignore_self)
+      self._all_commands[final_name] = info
+      if main:
+        if not self.main:
+          self.main = final_name
+        else:
+          raise CommandrDuplicateMainError("'%s' tried to override '%s'" % (
+              final_name, self._main_command))
+      self._command_list.append(info)
       return cmd_fn
 
     # Handle no command_name case.
@@ -179,7 +206,9 @@ class Commandr(object):
   def SetOptions(self,
       hyphenate=None,
       show_all_help_variants=None,
-      ignore_self=None):
+      ignore_self=None,
+      main_docs=None,
+      main=None):
     """Set commandr options. Any argument not set to None will be applied
     (otherwise it will retain its current value).
 
@@ -193,41 +222,52 @@ class Commandr(object):
       ignore_self - If True, arguments named "self" will be ignored when
           building the parser for functions. This is useful when using member
           functions as commands. Default is False.
+      main_docs - If True, the __doc__ from __main__ will be printed when no
+          command is specified.  Default is True.
+      main - If set, it will use the supplied value as the command name to run
+          if no command name is supplied.  It will override any previous values.
     """
+    # Anything added here should also be added to the RunFunction interface.
     if hyphenate is not None:
       self.hyphenate = bool(hyphenate)
     if show_all_help_variants is not None:
       self.hidden = not bool(show_all_help_variants)
     if ignore_self is not None:
       self.ignore_self = ignore_self
+    if main_docs is not None:
+      self.main_docs = main_docs
+    if main is not None:
+      self.main = main
 
-  def Run(self,
-      hyphenate=None,
-      show_all_help_variants=None,
-      ignore_self=None):
+  def Run(self, *args, **kwargs):
     """Main function to take command line arguments, and parse them into a
     command to run, and the arguments to that command, and execute the command.
 
     Args:
-      hyphenate - If not None, set the hyphenate option to this value (see
-          SetOptions for details)
-      show_all_help_variants - If not None, set the show_all_help_variants
-          option to this value (see SetOptions for details).
-      ignore_self - If not None, set the ignore_self option to this value (see
-          SetOptions for details).
+     All args are passed to SetOptions.  See SetOptions for detials.
     """
-    self.SetOptions(hyphenate, show_all_help_variants, ignore_self)
+    self.SetOptions(*args, **kwargs)
 
     # Pull the command name from the first command line argument.
-    if len(sys.argv) < 2:
-      self._HelpExitNoCommand("Command must be specified")
+    if len(sys.argv) < 2 or sys.argv[1].startswith('-'):
+      if self.main is not None:
+        sys.argv.insert(1, self.main)
+        cmd_name = self.main
+      else:
+        cmd_name = None
+    else:
+      cmd_name = sys.argv[1]
 
-    cmd_name = sys.argv[1]
     if cmd_name not in self._all_commands:
-      self._HelpExitNoCommand("Unknown command '%s'" % cmd_name)
+      if cmd_name:
+        message = "Unknown command '%s'" % cmd_name
+      else:
+        message = "A command must be specified."
+
+      self._HelpExitNoCommand(message=message)
 
     # Get the command function from the registry.
-    cmd_fn = self._all_commands[cmd_name]
+    cmd_fn = self._all_commands[cmd_name].callable
 
     self.no_command_arg = False
     return self.RunFunction(cmd_fn, cmd_name)
@@ -237,7 +277,9 @@ class Commandr(object):
       cmd_name=None,
       hyphenate=None,
       show_all_help_variants=None,
-      ignore_self=None):
+      ignore_self=None,
+      main_doc=None,
+      main=None):
     """Method to explicitly execute a given function against the command line
     arguments. If this method is called directly, the command name will not be
     expected in the arguments.
@@ -251,27 +293,17 @@ class Commandr(object):
           option to this value (see SetOptions for details).
       ignore_self - If not None, set the ignore_self option to this value (see
           SetOptions for details).
+      main_docs - If True, the __doc__ from __main__ will be printed when no
+          command is specified.  Default is True.
+      main - If set, it will use the supplied value as the command name to run
+          if no command name is supplied.  It will override any previous values.
     """
-    self.SetOptions(hyphenate, show_all_help_variants, ignore_self)
+    self.SetOptions(hyphenate, show_all_help_variants, ignore_self, main_doc,
+                    main)
 
-    cmd_name = cmd_name or ''
+    cmd_name = cmd_name or ""
 
-    # Check if the command function is wrapped with other decorators, and if so,
-    # find the original function signature.
-    cmd_fn_root = cmd_fn
-    while hasattr(cmd_fn_root, '__wrapped__'):
-      cmd_fn_root = getattr(cmd_fn_root, '__wrapped__')
-
-    # Reflect the command function's arguments.
-    argspec = inspect.getargspec(cmd_fn_root)
-
-    # Populates defaults iff there is a default
-    defaults_dict = {}
-    if argspec.defaults:
-      for i in xrange(1, len(argspec.defaults) + 1):
-        defaults_dict[argspec.args[-i]] = argspec.defaults[-i]
-
-    self._BuildOptParse(argspec, defaults_dict)
+    argspec, defaults_dict = self._BuildOptParse(cmd_name)
 
     (options, args) = self.parser.parse_args()
     options_dict = vars(options)
@@ -283,6 +315,11 @@ class Commandr(object):
     elif 'help' in options_dict:
       del options_dict['help']
 
+    info = self._all_commands.get(cmd_name) or self._command_info()
+    ignore = (info.ignore_self
+              if info.ignore_self is not None
+              else self.ignore_self)
+
     # If desired, add args into the options_dict
     args_to_parse = args[1:] if not self.no_command_arg else args
 
@@ -290,11 +327,15 @@ class Commandr(object):
       skipped = 0
 
       for i, value in enumerate(args_to_parse):
-        if i + skipped >= len(argspec.args):
-          self._HelpExitCommand("Too many arguments",
-                                cmd_name, cmd_fn, options_dict, argspec.args)
-
-        key = argspec.args[i + skipped]
+        while True:
+          if i + skipped >= len(argspec.args):
+            self._HelpExitCommand("Too many arguments",
+                                  cmd_name, cmd_fn, options_dict, argspec.args)
+          key = argspec.args[i + skipped]
+          if ignore and key == 'self':
+            skipped += 1
+            continue
+          break
 
         # If it's a boolean, skip assigning an arg to it.
         while key in defaults_dict and defaults_dict[key] in [True, False]:
@@ -308,7 +349,7 @@ class Commandr(object):
 
         # Make sure the arg isn't already changed from the default.
         if (((key in defaults_dict and defaults_dict[key] != options_dict[key])
-                or (key not in defaults_dict and options_dict[key] != None))
+             or (key not in defaults_dict and options_dict[key] != None))
             and value != options_dict[key]):
           self._HelpExitCommand(
               "Repeated option: %s\nOption: %s\nArgument: %s" % (
@@ -336,24 +377,22 @@ class Commandr(object):
     if result:
       print result
 
-  def _BuildOptParse(self, argspec, defaults_dict):
-    """Convert an ArgSpec object returned from inspect.getargsprc() into an
-    OptionsParser object that can be used to convert and validate command line
-    arguments to invoke the original function. Default values are pulled from
-    the function definition if present in defaults_dict. All non-defaulted
-    arguments must be specific on the command line.
+  def _BuildOptParse(self, cmd_name):
+    """Sets the current command parser to reflect the provided command.
 
     Args:
+      cmd_name - Name of the command being built.
+    Returns:
       argspec - ArgSpec object returned from inspect.getargspec() on the chosen
           command function.
-      default_dict - If provided, defaults will be pulled from the dict instead
-          of the argspec.
+      defaults_dict - Defaults will pulled from argspec.
 
     Returns:
       A populated OptionParser object.
     """
-    usage = 'Usage: %prog command [options]\n' + \
-        'Options without default values MUST be specified'
+    usage = 'Usage: %%prog %s [options]\n' % (cmd_name) + \
+        'Options without default values MUST be specified\n\n' + \
+        'Use: %prog help [command]\n  to see other commands available.'
 
     self.parser = OptionParser(usage=usage, add_help_option=False)
 
@@ -363,11 +402,32 @@ class Commandr(object):
     # Parse the command function's arguments into the OptionsParser.
     letters = set(['h']) # -h is for help
 
+    info = self._all_commands.get(cmd_name) or self._command_info()
+
+    # Check if the command function is wrapped with other decorators, and if so,
+    # find the original function signature.
+    cmd_fn_root = info.callable
+    while hasattr(cmd_fn_root, '__wrapped__'):
+      cmd_fn_root = getattr(cmd_fn_root, '__wrapped__')
+
+    # Reflect the command function's arguments.
+    argspec = inspect.getargspec(cmd_fn_root)
+
+    # Populates defaults iff there is a default
+    defaults_dict = {}
+    if argspec.defaults:
+      for i in xrange(1, len(argspec.defaults) + 1):
+        defaults_dict[argspec.args[-i]] = argspec.defaults[-i]
+
     for arg in argspec.args:
       argname = arg
 
-      if self.ignore_self and argname == 'self':
-        continue
+      if argname == 'self':
+        ignore = (info.ignore_self
+                  if info.ignore_self is not None
+                  else self.ignore_self)
+        if ignore:
+          continue
 
       # If the default is True, make the argument a negative
       if arg in defaults_dict and repr(defaults_dict[arg]) == 'True':
@@ -406,6 +466,8 @@ class Commandr(object):
                            type=arg_type, help='[default: %s]' % (help_str))
       else:
         self._AddOption(args, dest=arg)
+
+    return argspec, defaults_dict
 
   def _AddOption(self, args, **kwargs):
     """Adds an option to the parser.
@@ -446,15 +508,30 @@ class Commandr(object):
         del kwargs_hidden['default']
       self.parser.add_option(*args_hidden, **kwargs_hidden)
 
-  def _HelpExitNoCommand(self, message):
-    """Exit with a help message that is not specific to any command.
+  def _HelpExitNoCommand(self, cmd_name=None, message=None):
+    """Prints the global help message listing all commands.
 
     Args:
-      message - Error message explaining why the script exited.
+      message - Error message explaining why the script exited, if applicable.
     """
-    # Emit the error message.
-    print message
-    print ''
+    if cmd_name:
+      if cmd_name in self._all_commands:
+        self._BuildOptParse(cmd_name)
+        return self._HelpExitCommand(None, cmd_name,
+                                     self._all_commands[cmd_name].callable,
+                                     {}, [])
+      else:
+        message = "Unknown command '%s'" % cmd_name
+    if self.main_docs:
+      import __main__
+      if getattr(__main__, '__doc__', None):
+        print __main__.__doc__, "\n"
+      if getattr(__main__, '__copyright__', None):
+        print __main__.__copyright__, "\n"
+
+    if message:
+      # Emit the error message.
+      print message, "\n"
 
     # Emit a list of registered commands.
     categories = [None] + [c.category for c in self._command_list]
@@ -478,7 +555,9 @@ class Commandr(object):
       else:
         docs = []
       doc = " - %s" % " ".join(docs) if docs else ""
-      print "  %s%s" % (command.name, doc)
+      name = ("[%s]" % command.name if command.name == self.main
+              else command.name)
+      print "  %s%s" % (name, doc)
 
     sys.exit(1)
 
@@ -522,3 +601,6 @@ class Commandr(object):
     self.parser.print_help()
 
     sys.exit(2)
+
+class CommandrError(Exception): pass
+class CommandrDuplicateMainError(CommandrError): pass

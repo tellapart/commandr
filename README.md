@@ -260,6 +260,19 @@ as parameters to the Run() function. Values set by Run() take precedence.
 
 The available parameters are:
 
+##### ignore_self:
+If True, arguments named "self" will be ignored when building the parser
+for functions. This is useful when using member functions as commands.
+Default is False.
+
+##### main_docs:
+If True, __main__.__doc__ and __main__.__copyright__ will be printed if
+the command is run with no arguments or help.  Default is True.
+
+##### main:
+If set, Commandr will use the supplied value as the command name to run
+if no command name is supplied.  It will override any previous values.
+
 ##### hyphenate:
 If True (default), then any argument containing an underscore ('_') will be
 parsable with dashes ('-') in their place (both variants will be allowed).
@@ -287,6 +300,9 @@ if __name__ == '__main__':
   SetOptions(hyphenate=False)
   Run()
 ```
+
+The options main and ignore_self can also be passed to the Command() decorator
+as boolean options for the function being decorated.
 
 Multiple Decorators
 -------------------
