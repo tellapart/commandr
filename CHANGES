@@ -1,3 +1,12 @@
+1.2.0
+========
+- Support @command() decorator with no name argument, which will fall back to 
+  the function's name.
+- Use the capitalized letter for the second instance of a single letter flag.
+- Use the first line of the docstring when listing all available commands.
+- Add 'ignore_self' option, which will ignore functions arguments named 'self'.
+- Add RunFunction() method to invoke a single explicit function, instead of
+  name dispatched commands.
 
 1.1.0
 ========

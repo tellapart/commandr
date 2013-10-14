@@ -26,6 +26,7 @@ _COMMANDR = Commandr()
 
 command = _COMMANDR.command
 Run = _COMMANDR.Run
+RunFunction = _COMMANDR.RunFunction
 SetOptions = _COMMANDR.SetOptions
 
 # Export the decorator utils.
