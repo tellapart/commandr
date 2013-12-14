@@ -259,7 +259,11 @@ class Commandr(object):
     else:
       cmd_name = sys.argv[1]
 
-    if cmd_name not in self._all_commands:
+    # Special command name to facilitate Bash Tab-completion on command names.
+    if cmd_name == 'list_command_completions' and len(sys.argv) == 3:
+      self._CompletionAllCommands(sys.argv[2])
+
+    elif cmd_name not in self._all_commands:
       if cmd_name:
         message = "Unknown command '%s'" % cmd_name
       else:
@@ -381,7 +385,7 @@ class Commandr(object):
             cmd_name, cmd_fn, options_dict, argspec.args)
         elif defaults_dict[key] is not None:
           options_dict[key] = defaults_dict[key]
-                        
+
     self.current_command = info
     try:
       result = cmd_fn(**options_dict)
@@ -524,6 +528,19 @@ class Commandr(object):
       if 'default' in kwargs_hidden:
         del kwargs_hidden['default']
       self.parser.add_option(*args_hidden, **kwargs_hidden)
+
+  def _CompletionAllCommands(self, prefix):
+    """Given a command name prefix, print a ' ' delimited list of all possible
+    commands that match, and exit with success. Useful for bash tab completion.
+
+    Args:
+      prefix - Command name prefix.
+    """
+    print ' '.join([
+        c.name for c in self._command_list
+        if c.name.startswith(prefix)])
+
+    sys.exit(0)
 
   def Usage(self, message=None):
     """Prints out a Usage message and exits."""

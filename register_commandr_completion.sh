@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # Copyright 2013 TellApart, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,17 +16,23 @@
 #
 # =============================================================================
 #
-# setup.py for the commandr package.
+# Bash Tab-completion registration for commandr scripts. This is used like:
+#  $ source register_commandr_completion.sh example.py
 #
 
-from distutils.core import setup
+function _CommandrCompletion() {
+  local cur
+  cur=${COMP_WORDS[COMP_CWORD]}
 
-setup(
-    name='commandr',
-    version='1.3.0',
-    packages=['commandr'],
-    author='Kevin Ballard',
-    author_email='kevin@tellapart.com',
-    url='http://pypi.python.org/pypi/commandr/',
-    license='LICENSE',
-    description='Tool to automatically build command line interfaces to functions')
+  COMPREPLY=()
+
+  # Only do completion on the command name.
+  if [ $1 == $3 ] ; then
+    COMPREPLY=($( $1 list_command_completions "${cur}" ))
+  fi
+
+  return 0
+}
+
+complete -F _CommandrCompletion -o default "$@"
+
