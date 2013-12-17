@@ -254,16 +254,14 @@ class Commandr(object):
       if self.main is not None:
         sys.argv.insert(1, self.main)
         cmd_name = self.main
+      elif len(sys.argv) == 3 and sys.argv[1] == '--list_command_completions':
+        self._CompletionAllCommands(sys.argv[2])
       else:
         cmd_name = None
     else:
       cmd_name = sys.argv[1]
 
-    # Special command name to facilitate Bash Tab-completion on command names.
-    if cmd_name == 'list_command_completions' and len(sys.argv) == 3:
-      self._CompletionAllCommands(sys.argv[2])
-
-    elif cmd_name not in self._all_commands:
+    if cmd_name not in self._all_commands:
       if cmd_name:
         message = "Unknown command '%s'" % cmd_name
       else:

@@ -28,7 +28,7 @@ function _CommandrCompletion() {
 
   # Only do completion on the command name.
   if [ $1 == $3 ] ; then
-    COMPREPLY=($( $1 list_command_completions "${cur}" ))
+    COMPREPLY=($( $1 --list_command_completions "${cur}" ))
   fi
 
   return 0
