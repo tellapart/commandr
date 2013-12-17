@@ -90,7 +90,7 @@
 #
 # There are several options that affect the form of the generated parser. The
 # options can be set by calling:
-#   SetOption(hyphenate=<bool>, show_all_help_variants=<bool>)
+#   SetOptions(hyphenate=<bool>, show_all_help_variants=<bool>)
 #
 # All options can also be set as arguments to Run(). Values set in that way
 # will take precedence.
@@ -138,6 +138,7 @@ class Commandr(object):
     self.hidden = True
     self.ignore_self = False
     self.main_docs = True
+    self.main = None
 
     # Internal flag indicating whether to expect the command name as the first
     # command line argument.
@@ -146,7 +147,7 @@ class Commandr(object):
     # Mapping of all command names to the respective command function.
     self.parser = None
     self._all_commands = {}
-    self.main = None
+    self.current_command = None
 
     # List of commands in the order they appeared, of the format:
     #   [(name, callable, category)]
@@ -306,6 +307,7 @@ class Commandr(object):
     argspec, defaults_dict = self._BuildOptParse(cmd_name)
 
     (options, args) = self.parser.parse_args()
+
     options_dict = vars(options)
 
     # If help, print our message, else remove it so it doesn't confuse the
@@ -315,14 +317,14 @@ class Commandr(object):
     elif 'help' in options_dict:
       del options_dict['help']
 
-    info = self._all_commands.get(cmd_name) or self._command_info()
+    info = (self._all_commands.get(cmd_name)
+            or self._command_info(cmd_name, cmd_fn))
     ignore = (info.ignore_self
               if info.ignore_self is not None
               else self.ignore_self)
 
     # If desired, add args into the options_dict
     args_to_parse = args[1:] if not self.no_command_arg else args
-
     if len(args_to_parse) > 0:
       skipped = 0
 
@@ -349,8 +351,9 @@ class Commandr(object):
 
         # Make sure the arg isn't already changed from the default.
         if (((key in defaults_dict and defaults_dict[key] != options_dict[key])
-             or (key not in defaults_dict and options_dict[key] != None))
-            and value != options_dict[key]):
+             or (key not in defaults_dict and options_dict[key] is not None))
+            and value != options_dict[key]
+            and not isinstance(defaults_dict[key], list)):
           self._HelpExitCommand(
               "Repeated option: %s\nOption: %s\nArgument: %s" % (
                   key, options_dict[key], value),
@@ -362,17 +365,28 @@ class Commandr(object):
             value = int(value)
           elif isinstance(defaults_dict[key], float):
             value = float(value)
-
+          elif  isinstance(defaults_dict[key], list):
+            if options_dict[key] is None:
+              value = [value]
+            else:
+              value = options_dict[key] + [value]
         # Update arg
         options_dict[key] = value
 
     for key, value in options_dict.iteritems():
-      if value == None and key not in defaults_dict:
-        self._HelpExitCommand(
+      if value is None:
+        if key not in defaults_dict:
+          self._HelpExitCommand(
             "All options without default values must be specified",
             cmd_name, cmd_fn, options_dict, argspec.args)
-
-    result = cmd_fn(**options_dict)
+        elif defaults_dict[key] is not None:
+          options_dict[key] = defaults_dict[key]
+                        
+    self.current_command = info
+    try:
+      result = cmd_fn(**options_dict)
+    except CommandrUsageError as e:
+      self.Usage(str(e) or None)
 
     if result:
       print result
@@ -449,6 +463,9 @@ class Commandr(object):
         elif repr(defaults_dict[arg]) == 'True':
           self._AddOption(args, dest=arg, action='store_false',
                       default=True)
+        elif isinstance(defaults_dict[arg], list):
+          self._AddOption(args, dest=arg, action='append',
+                          type='string')
         else:
           if isinstance(defaults_dict[arg], int):
             arg_type = 'int'
@@ -507,6 +524,14 @@ class Commandr(object):
       if 'default' in kwargs_hidden:
         del kwargs_hidden['default']
       self.parser.add_option(*args_hidden, **kwargs_hidden)
+
+  def Usage(self, message=None):
+    """Prints out a Usage message and exits."""
+    if self.current_command:
+      self._HelpExitCommand(message, self.current_command.name,
+                            self.current_command.callable)
+    else:
+      self._HelpExitNoCommand(message=message)
 
   def _HelpExitNoCommand(self, cmd_name=None, message=None):
     """Prints the global help message listing all commands.
@@ -582,7 +607,11 @@ class Commandr(object):
         arglist = sorted(options_dict.keys())
       print "Current Options:"
       for arg in arglist:
-        print " --%s=%s" % (arg, options_dict[arg])
+        arg_start =  " --%s=" % arg
+        arg_list = (arg_start.join(str(a) for a in options_dict[arg])
+                    if isinstance(options_dict[arg], list)
+                    else str(options_dict[arg]))
+        print "%s%s" % (arg_start, arg_list)
       print ""
 
     # Emit the documentation for the command.
@@ -603,4 +632,5 @@ class Commandr(object):
     sys.exit(2)
 
 class CommandrError(Exception): pass
+class CommandrUsageError(CommandrError): pass
 class CommandrDuplicateMainError(CommandrError): pass

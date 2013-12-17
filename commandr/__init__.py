@@ -16,18 +16,28 @@ __all__ = [
     'command',
     'Run',
     'SetOptions',
+    'Usage',
     'update_wrapper',
     'wraps',
-    'MonkeyPatchFunctools']
+    'MonkeyPatchFunctools',
+    'CommandrError',
+    'CommandrUsageError',
+    'CommandrDuplicateMainError']
 
 # Export the global Commandr object methods.
-from commandr import Commandr
+from commandr import (
+  Commandr,
+  CommandrError,
+  CommandrUsageError,
+  CommandrDuplicateMainError)
+
 _COMMANDR = Commandr()
 
 command = _COMMANDR.command
 Run = _COMMANDR.Run
 RunFunction = _COMMANDR.RunFunction
 SetOptions = _COMMANDR.SetOptions
+Usage = _COMMANDR.Usage
 
 # Export the decorator utils.
 from functools_util import update_wrapper, wraps, MonkeyPatchFunctools

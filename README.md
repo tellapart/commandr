@@ -171,6 +171,19 @@ name with "no_" prefixed. For example, to set 'cache' to False for 'get':
 $ python features.py get somekey --no-cache
 ```
 
+### List Parameters
+
+If a parameter has a default value that is a list, Commandr will accept multiple
+values for the parameter, joining them together to form a list.  The type for
+the values in the list will be string.
+
+Multiple values can be specified by repeating the switch:
+```
+my-command --arg value1 --arg value2 --arg value3
+```
+will lead to:
+arg=[value1, value2, value3]
+
 ### Documentation Generation
 
 Command help is automatically generated, using the signature and docstring of
@@ -252,10 +265,14 @@ $ python features.py put somekey1 --transaction
 >   --transaction
 ```
 
+To print the usage message after the command is called, raise
+commandr.CommandrUsageError(message).  This will print the command usage and
+exit.
+
 ### Options
 
 There are several options that can be set to modify the behavior of the parser
-generation. These options can be set by calling the SeeOption() function, or
+generation. These options can be set by calling the SetOptions() function, or
 as parameters to the Run() function. Values set by Run() take precedence.
 
 The available parameters are:
