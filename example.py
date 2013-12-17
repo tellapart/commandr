@@ -13,11 +13,9 @@
 # limitations under the License.
 #
 # =============================================================================
-#
-# Example usage of commandr.
-#
+"""Example usage of commandr."""
 
-from commandr import command, Run, wraps
+from commandr import command, Run, CommandrUsageError, wraps
 
 @command('greet')
 def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
@@ -39,11 +37,13 @@ def SayGreeting(name, title='Mr.', times=1, comma=False, caps_lock=False):
 
 @command
 def simple_greet(name):
-  """An example of @command without arguments.
+  """An example of @command without arguments and printing Usage.
 
   Arguments:
     name - Name to greet.
   """
+  if name == 'John':
+    raise CommandrUsageError("John is not a valid name.")
   print 'Hi %s!' % name
 
 @command()
