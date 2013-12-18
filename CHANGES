@@ -1,5 +1,9 @@
+1.3.1
+========
+- Allow missing prefix for Bash Tab-completion.
+
 1.3.0
-=======
+========
 - commandr.CommandrUsageException(my_message) can now be raised in a commandr
   run function to print Usage.
 - commandr.Usage(my_message) can now be called to print the Usage.
@@ -8,7 +12,7 @@
 - Adds support for Bash Tab-completion.
 
 1.2.1
-=======
+========
 - The 'help' command has been added to give either the global help or help on
   a specific command (help [command]).
 - The option 'help_docs' was added to print __main__.__doc__ on help messages.
