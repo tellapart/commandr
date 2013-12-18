@@ -254,8 +254,9 @@ class Commandr(object):
       if self.main is not None:
         sys.argv.insert(1, self.main)
         cmd_name = self.main
-      elif len(sys.argv) == 3 and sys.argv[1] == '--list_command_completions':
-        self._CompletionAllCommands(sys.argv[2])
+      elif (len(sys.argv) in [2, 3]
+          and sys.argv[1] == '--list_command_completions'):
+        self._CompletionAllCommands(sys.argv[2] if len(sys.argv) > 2 else '')
       else:
         cmd_name = None
     else:
