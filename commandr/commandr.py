@@ -129,6 +129,25 @@ import itertools
 from optparse import OptionParser, SUPPRESS_HELP
 import sys
 
+class CommandInfo(
+  namedtuple('BaseCommandInfo',
+             ['name', 'callable', 'category', 'ignore_self'])):
+  """Class to contain information about a spepcific supported command."""
+  def __new__(cls, name=None, callable=None, category=None, ignore_self=None):
+    """Creates a new CommandInfo allowing for default values.
+
+    Args:
+      name - Name of the command.
+      callable - Callable function of the command.
+      category - Category classification of the command.
+      ignore_self - Whether the arg list should ignore the first value if it is
+                    self.
+    Returns:
+      info - A CommandInfo.
+    """
+    return super(CommandInfo, cls).__new__(cls, name, callable, category,
+                                           ignore_self)
+
 class Commandr(object):
   """Class for managing commandr context."""
 
@@ -152,8 +171,6 @@ class Commandr(object):
     # List of commands in the order they appeared, of the format:
     #   [(name, callable, category)]
     self._command_list = []
-    self._command_info = namedtuple(
-      '_COMMAND_INFO', ['name', 'callable', 'category', 'ignore_self'])
 
     self.command('help', ignore_self=True)(self._HelpExitNoCommand)
 
@@ -183,18 +200,14 @@ class Commandr(object):
       decorator/function to register the command.
     """
     def command_decorator(cmd_fn, cmd_fn_name=None):
-      final_name = (cmd_fn_name if cmd_fn_name is not None
-                    else command_name if command_name is not None
-                    else cmd_fn.func_name)
-      info = self._command_info(final_name, cmd_fn, category, ignore_self)
-      self._all_commands[final_name] = info
+      info = self.AddCommand(cmd_fn, cmd_fn_name or command_name, category,
+                             ignore_self)
       if main:
         if not self.main:
-          self.main = final_name
+          self.main = info.name
         else:
           raise CommandrDuplicateMainError("'%s' tried to override '%s'" % (
-              final_name, self._main_command))
-      self._command_list.append(info)
+              info.name, self._main_command))
       return cmd_fn
 
     # Handle no command_name case.
@@ -203,6 +216,24 @@ class Commandr(object):
       return command_decorator(cmd_func, cmd_func.func_name)
 
     return command_decorator
+
+  def AddCommand(self, cmd_fn, cmd_fn_name, category, ignore_self):
+    """Adds a command to the commandr list.
+
+    Args:
+      cmd_fn - The function to add.
+      cmd_fn_name - The name of the command being added or the func_name.
+      category - The category of the command.
+      ignore_self - Whether to ignore self in the arg list.
+    Returns:
+      info - The CommandInfo created.
+    """
+    final_name = (cmd_fn_name if cmd_fn_name is not None
+                  else cmd_fn.func_name)
+    info = CommandInfo(final_name, cmd_fn, category, ignore_self)
+    self._all_commands[info.name] = info
+    self._command_list.append(info)
+    return info
 
   def SetOptions(self,
       hyphenate=None,
@@ -302,12 +333,14 @@ class Commandr(object):
       main - If set, it will use the supplied value as the command name to run
           if no command name is supplied.  It will override any previous values.
     """
+    info = self._all_commands.get(cmd_name)
+    if not info:
+      info = self.AddCommand(cmd_fn, cmd_name, None, ignore_self)
+
     self.SetOptions(hyphenate, show_all_help_variants, ignore_self, main_doc,
                     main)
 
-    cmd_name = cmd_name or ""
-
-    argspec, defaults_dict = self._BuildOptParse(cmd_name)
+    argspec, defaults_dict = self._BuildOptParse(info)
 
     (options, args) = self.parser.parse_args()
 
@@ -316,12 +349,10 @@ class Commandr(object):
     # If help, print our message, else remove it so it doesn't confuse the
     # execution
     if options_dict['help']:
-      self._HelpExitCommand(None, cmd_name, cmd_fn)
+      self._HelpExitCommand(None, info.name, info.callable)
     elif 'help' in options_dict:
       del options_dict['help']
 
-    info = (self._all_commands.get(cmd_name)
-            or self._command_info(cmd_name, cmd_fn))
     ignore = (info.ignore_self
               if info.ignore_self is not None
               else self.ignore_self)
@@ -335,7 +366,7 @@ class Commandr(object):
         while True:
           if i + skipped >= len(argspec.args):
             self._HelpExitCommand("Too many arguments",
-                                  cmd_name, cmd_fn, options_dict, argspec.args)
+                                  info.name, info.callable, options_dict, argspec.args)
           key = argspec.args[i + skipped]
           if ignore and key == 'self':
             skipped += 1
@@ -348,7 +379,7 @@ class Commandr(object):
           if i + skipped >= len(argspec.args):
             self._HelpExitCommand(
                 "Too many arguments: True/False must be specified via switches",
-                cmd_name, cmd_fn, options_dict, argspec.args)
+                info.name, info.callable, options_dict, argspec.args)
 
           key = argspec.args[i + skipped]
 
@@ -360,7 +391,7 @@ class Commandr(object):
           self._HelpExitCommand(
               "Repeated option: %s\nOption: %s\nArgument: %s" % (
                   key, options_dict[key], value),
-              cmd_name, cmd_fn, options_dict, argspec.args)
+              info.name, info.callable, options_dict, argspec.args)
 
         # cast specific types
         if key in defaults_dict:
@@ -381,24 +412,24 @@ class Commandr(object):
         if key not in defaults_dict:
           self._HelpExitCommand(
             "All options without default values must be specified",
-            cmd_name, cmd_fn, options_dict, argspec.args)
+            info.name, info.callable, options_dict, argspec.args)
         elif defaults_dict[key] is not None:
           options_dict[key] = defaults_dict[key]
 
     self.current_command = info
     try:
-      result = cmd_fn(**options_dict)
+      result = info.callable(**options_dict)
     except CommandrUsageError as e:
       self.Usage(str(e) or None)
 
     if result:
       print result
 
-  def _BuildOptParse(self, cmd_name):
+  def _BuildOptParse(self, info):
     """Sets the current command parser to reflect the provided command.
 
     Args:
-      cmd_name - Name of the command being built.
+      info - CommandInfo of the command being built.
     Returns:
       argspec - ArgSpec object returned from inspect.getargspec() on the chosen
           command function.
@@ -407,7 +438,7 @@ class Commandr(object):
     Returns:
       A populated OptionParser object.
     """
-    usage = 'Usage: %%prog %s [options]\n' % (cmd_name) + \
+    usage = 'Usage: %%prog %s [options]\n' % (info.name) + \
         'Options without default values MUST be specified\n\n' + \
         'Use: %prog help [command]\n  to see other commands available.'
 
@@ -418,8 +449,6 @@ class Commandr(object):
 
     # Parse the command function's arguments into the OptionsParser.
     letters = set(['h']) # -h is for help
-
-    info = self._all_commands.get(cmd_name) or self._command_info()
 
     # Check if the command function is wrapped with other decorators, and if so,
     # find the original function signature.
