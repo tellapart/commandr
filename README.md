@@ -269,6 +269,19 @@ To print the usage message after the command is called, raise
 commandr.CommandrUsageError(message).  This will print the command usage and
 exit.
 
+### Bash Tab-Completion
+
+Commandr supports Bash tab-completion of command names. You simply need to
+register the script with Bash to enable the feature.
+
+```bash
+$ source register_commandr_completion.sh example.py
+$
+$ ./example.py \t\t
+another_simple_greet  greet                 help                  simple_greet
+$ ./example.py
+```
+
 ### Options
 
 There are several options that can be set to modify the behavior of the parser
